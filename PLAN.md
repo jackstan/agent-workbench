@@ -16,7 +16,7 @@ Keep Sendable's existing agent code, workflows, configuration, and deployments i
 
 This milestone is not a live autonomous delivery demonstration.
 
-## 2. Authenticated integrations — implemented in part; live proof pending
+## 2. Authenticated integrations — implemented in part; live approval observed
 
 - Implemented a read-only Linear API adapter for content-bound proposals, direct
   app/human identities, complete current pagination, and observed revocation.
@@ -25,8 +25,9 @@ This milestone is not a live autonomous delivery demonstration.
 - Tested fixture-based approval failure cases, eight-process contention, and
   process termination before/after commit. Query validated against the official schema.
 - Created the independent duration-parser sandbox with fixed acceptance tests.
-- Next: configure dedicated Linear identities and read credentials, and observe
-  a genuine approved sandbox issue. No live approval has been claimed as proof.
+- Observed a genuine approval on the independent sandbox, with dedicated Linear
+  app/read identities, a persistent receipt, and rejected duplicate consumption.
+- Added explicit saved-authorization revalidation without consuming it again.
 - Add GitHub read adapters and explicit workflow provenance validation.
 - Revalidate the complete approved proposal, repository, scope, and base before publication.
 - Use separate test-project identities and credentials; do not import Sendable's settings.
@@ -44,6 +45,13 @@ a future publication safe without a fresh authority check.
 - Add bounded test commands and independent model review with strict result schemas.
 - Preserve exact head/base bindings, repair reservations, limits, and recovery history.
 - Keep human merge mandatory and post-merge obligations visible.
+- Observed separate local builder/reviewer processes and a first-pass sandbox PR.
+- Implemented a local coordinator that dispatches scoped repairs from verifier
+  findings, records reservations before dispatch, and verifies the resulting commit.
+- Added a macOS Codex adapter with isolated worker shells and evidence capture.
+- Regression coverage includes stale evidence, changed heads, revoked authority,
+  concurrent admission, uncertain builder outcomes, scope and repair limits.
+- Hosted orchestration, automatic publication and unattended recovery remain open.
 
 Done when a real approved improvement creates a PR, passes independent verification,
 and handles a failed or interrupted run without duplicate publication.

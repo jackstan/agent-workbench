@@ -265,5 +265,34 @@ def authorize_build(
                                             snapshot.approved_paths), event, snapshot.proposal_binding)
 
 
+def revalidate_saved_authorization(snapshot, handoff, saved, ledger, *,
+                                   approver_actor_id, expected_repository, now=None):
+    """Validate continuation of a consumed approval; never consume it again."""
+    _validate_handoff(snapshot, handoff, approver_actor_id, expected_repository)
+    current = now or datetime.now(timezone.utc)
+    approved_at = _parse_time(snapshot.approved_at, "approved_at")
+    if not current - timedelta(days=7) <= approved_at <= current + timedelta(minutes=5):
+        raise DispatchError("approval is stale or in the future")
+    key = _approval_key(snapshot)
+    receipt = ledger.receipt(key)
+    if (snapshot.ambiguous or saved.get("mode") != "automatic" or receipt is None
+            or receipt != saved.get("audit_event") or saved.get("approval_key") != key):
+        raise DispatchError("Saved authorization does not match its durable receipt")
+    expected = {"repository": snapshot.repository, "base_sha": snapshot.base_sha,
+                "base_branch": snapshot.base_branch,
+                "approved_paths": list(snapshot.approved_paths)}
+    if any(saved.get(k) != v or receipt["details"].get(k) != v for k, v in expected.items()):
+        raise DispatchError("Saved authorization scope changed")
+    if (saved.get("scope_digest") != _scope_digest(snapshot.proposal_id, key, snapshot.approved_paths)
+            or saved.get("branch_name") != f"agent/{snapshot.task_key.lower()}-{key[:10]}"):
+        raise DispatchError("Saved authorization binding changed")
+    original = receipt["details"].get("proposal_binding", {})
+    if (original.get("envelope") != snapshot.proposal_binding.get("envelope")
+            or original.get("controls") != snapshot.proposal_binding.get("controls")
+            or saved.get("proposal_binding") != original):
+        raise DispatchError("Live proposal or decision changed")
+    return {"approval_key": key, "read_sha256": snapshot.proposal_binding["read_sha256"]}
+
+
 def dump_authorization(value: BuildAuthorization) -> str:
     return json.dumps(value.to_dict(), sort_keys=True, indent=2) + "\n"
