@@ -43,7 +43,8 @@ BUILD_SCHEMA = {
 class LocalCodexAdapter:
     def __init__(self, *, checkout: Path, workspace: Path, evidence: Path,
                  config: ProjectConfig, authorization: dict, authority,
-                 codex: Path, python: Path, denied_paths: tuple[Path, ...]):
+                 codex: Path, python: Path, denied_paths: tuple[Path, ...],
+                 proxy_url: str | None = None):
         if sys.platform != "darwin":
             raise ValueError("The local Codex adapter currently supports macOS only")
         self.checkout, self.workspace, self.evidence = map(
@@ -51,6 +52,9 @@ class LocalCodexAdapter:
         self.config, self.authorization, self.authority = config, authorization, authority
         self.codex, self.python = Path(codex).resolve(), Path(python).resolve()
         self.denied_paths = tuple(Path(p).resolve() for p in denied_paths)
+        if proxy_url is not None and not re.fullmatch(r"http://127\.0\.0\.1:[0-9]{1,5}/v1", proxy_url):
+            raise ValueError("Hosted inference requires the local official action proxy")
+        self.proxy_url = proxy_url
         if not self.codex.is_file() or not self.python.is_file():
             raise ValueError("Explicit Codex and Python executables must exist")
         # First provider adapter intentionally supports exact existing files, not globs.
@@ -139,6 +143,10 @@ class LocalCodexAdapter:
                   'web_search="disabled"', 'shell_environment_policy.inherit="none"',
                   "shell_environment_policy.experimental_use_profile=false",
                   f"shell_environment_policy.set={env_inline}"]
+        if self.proxy_url:
+            values.extend(['model_provider="workbench-proxy"',
+                           'model_providers.workbench-proxy={name="Workbench protected proxy",'
+                           f'base_url={json.dumps(self.proxy_url)},wire_api="responses"}}'])
         return [arg for value in values for arg in ("-c", value)]
 
     def sandbox(self, checkout, command, writable=False):

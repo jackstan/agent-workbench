@@ -18,13 +18,21 @@ a hardened execution service for arbitrary repositories or untrusted code.
 - Only direct app-created proposals and distinct human-authored approval records are
   accepted. Keep the human's posting credential out of automation; API identity alone
   cannot prove human intent if an agent possesses that credential.
-- The patch validator handles data only; future privileged publication must never execute
+- The patch validator handles data only; privileged publication must never execute
   the changed repository or import its code.
 - Runtime automation cannot modify its own controls or grant itself new permissions.
 
-Before live execution, complete the real approval trial, GitHub adapter, worker isolation,
-artifact provenance, publication recovery, and public-fork tests described in PLAN.md
-and docs/architecture.md. The approval CLI does not execute or publish changes.
+The opt-in consuming-project workflow has separate approval, read-only model, and
+privileged publisher jobs. GitHub dispatch is an explicit approval route, with a
+durable tag reservation and no automatic retry/reset. Trusted repository administrators
+can alter those tags; this is not a tamper-proof ledger. The publisher revalidates
+same-run artifacts and exact revisions and never executes the candidate.
+
+Local approval and repair have been observed. Hosted operation still requires its
+own live trial; tests with fixture API responses do not establish provider behavior.
+Review the execution, provenance and recovery limits in PLAN.md and
+docs/architecture.md before enabling a consuming project's workflow.
+The approval CLI does not execute or publish changes.
 
 Do not include credentials, private evidence, or exploitable payloads in a public issue.
 Use GitHub's private vulnerability reporting feature when it is available on the repository.

@@ -12,8 +12,10 @@ are implemented. A real sandbox approval and supervised first-pass PR have been
 observed. An opt-in local coordinator now connects independent Codex verification
 to bounded builder repairs, with durable reservations and a fresh review of each
 new commit. It currently supports macOS and exact existing file scopes.
-Hosted execution, automatic publication, crash recovery, and release validation
-remain future milestones.
+A GitHub Actions adapter and workflow template now wrap that same coordinator
+with owner approval, live stage logs and a separate publisher. Hosted model execution
+still requires a dedicated API key and a live trial; local evidence is not hosted proof.
+Automatic crash recovery and release validation remain future milestones.
 
 ## Try it
 
@@ -70,6 +72,7 @@ autonomous coding, live identity verification, PR creation, or a deployed improv
 | Review gate | Exact commit/base matching, complete required checks, failed checks cannot become a model PASS |
 | Repair policy | Duplicate-head suppression, at most two repairs, explicit human and deployment handoffs |
 | Local coordinator | Fresh authority checks, isolated Codex verification and repair, durable dispatch reservations, exact-commit re-verification; stops on uncertain outcomes |
+| GitHub adapter | Owner-only dispatch, persistent Git tag claim, same-run artifacts, live stage events and a separate exact-tree publisher; hosted trial pending |
 | Read recovery | Bounded transient read retries with nested deadline propagation |
 | Project configuration | Versioned TOML schema, configurable identity/scope/checks, validation without execution |
 
@@ -86,8 +89,57 @@ flowchart LR
     Merge --> Release[Release validation]
 ```
 
-The diagram describes the intended complete system. The local coordinator implements
-the verification/repair loop; hosted execution and release validation are not enabled.
+The diagram describes the intended complete system. The coordinator implements the
+verification/repair loop. The hosted template starts from an existing candidate PR;
+initial code generation and release validation are outside that template.
+
+## Run the cycle visibly in GitHub
+
+Copy [`examples/github/workbench.yml`](examples/github/workbench.yml) into the
+consuming project's `.github/workflows/workbench.yml` and replace
+`WORKBENCH_REVISION` with a reviewed full Agent Workbench commit. Commit a reviewed
+`project.github.toml` and `proposal.github.json` on that project's default branch.
+Use the same project schema and proposal shape as the examples, but set
+`approver_actor_id = "github:YOUR_NUMERIC_USER_ID"`. Obtain that canonical ID from
+GitHub's authenticated user API; do not put a username or a model-supplied ID there.
+
+Add a dedicated `OPENAI_API_KEY` Actions secret to the consuming repository. The
+template uses GitHub-hosted macOS runners for model execution and Ubuntu runners
+for approval and publication. Its pinned Codex version must support named filesystem
+permission profiles; every model invocation first checks the isolation boundaries.
+Projects need an existing `ci.yml` with `workflow_dispatch` for the publisher to
+request CI on the repaired branch.
+
+Open a same-repository PR on an `agent/*` branch. As the configured approver, choose
+**Actions → Agent Workbench → Run workflow**, select the trusted default branch,
+and supply the PR number and full candidate SHA. This dispatch is a new GitHub
+approval for the reviewed proposal, scope and current base. It neither consumes
+nor carries forward an old Linear approval. The existing Linear/local route remains
+available.
+
+Three jobs show the run:
+
+1. **Validate approval and reserve run:** reject stale/foreign candidates and
+   atomically create a durable claim before any worker starts.
+2. **Independent verifier → builder repair → fresh verifier:** emit `WORKBENCH`
+   events to the live Actions log as each stage starts and completes. Findings
+   pass to the builder; every repair gets a new verifier process.
+3. **Validate evidence and publish for human merge:** recheck current authority,
+   required checks, exact commit, cumulative patch and resulting tree; update the
+   existing PR using a conditional push, publish verdicts and request CI.
+
+The PR's pending verifier status links to the live run. Detailed stage progress
+appears in Actions during execution; the final verdicts and summary appear on the
+PR afterward. Download the run's artifacts for prompts, process logs, structured
+reviews, patches, events and the candidate Git bundle. Artifact retention is 90 days;
+export evidence needed for a longer-lived case study.
+
+**Recovery is deliberately manual.** GitHub's Re-run button is refused. A second
+dispatch of the same repository/PR/head/base/config/proposal binding is also refused,
+even after runner loss. Preserve the `agent-workbench/claims/*` tags. They are durable
+reservations, not an immutable audit service: trusted repository administrators can
+change them. Inspect uncertain runs and remote commits before authorizing new work.
+No job merges or deploys a PR.
 
 ## Run a local repair cycle
 

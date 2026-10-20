@@ -55,7 +55,14 @@ a future publication safe without a fresh authority check.
   deliberately seeded sandbox defect that passed the original acceptance suite.
   The journal records one repair, both verdicts and exact commits. See the
   [public evidence](docs/evidence/sandbox-repair-cycle.json) and README reproducer.
-- Hosted orchestration, automatic publication and unattended recovery remain open.
+- Added a GitHub Actions boundary using the same coordinator: owner dispatch,
+  durable Git tag reservation, live log events, isolated model job and separate
+  publisher with fresh head/base checks and conditional push.
+- Regression tests reject stale/foreign/repeated invocations and altered artifacts;
+  a real temporary Git bundle/push test checks publication. Provider responses in
+  these tests are fixtures, not a hosted execution claim.
+- The workflow template is ready for a dedicated sandbox API key and live trial.
+  Hosted repair evidence and unattended recovery remain open.
 
 Done when a real approved improvement creates a PR, passes independent verification,
 and handles a failed or interrupted run without duplicate publication.

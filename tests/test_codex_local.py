@@ -1,5 +1,6 @@
 """Real Git/application integration; model output is explicitly a fixture."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -47,11 +48,20 @@ class LocalAdapterTests(unittest.TestCase):
             auth["approved_paths"] = list(config.approved_paths)
             auth["scope_digest"] = _scope_digest("fixture", "e" * 64, config.approved_paths)
             with patch("agent_workbench.codex_local.sys.platform", "darwin"), \
-                    patch.object(LocalCodexAdapter, "execute", return_value=0):
+                    patch.object(LocalCodexAdapter, "execute", return_value=0), \
+                    patch.dict(os.environ, GH_TOKEN="fixture-github-token",
+                               OPENAI_API_KEY="fixture-api-key"):
                 adapter = LocalCodexAdapter(
                     checkout=repo, workspace=root / "workers", evidence=root / "evidence",
                     config=config, authorization=auth, authority=lambda: {},
-                    codex=Path(sys.executable), python=Path(sys.executable), denied_paths=())
+                    codex=Path(sys.executable), python=Path(sys.executable), denied_paths=(),
+                    proxy_url="http://127.0.0.1:12345/v1")
+            self.assertNotIn("GH_TOKEN", adapter.env)
+            self.assertNotIn("OPENAI_API_KEY", adapter.env)
+            profile = " ".join(adapter.profile(repo, True))
+            self.assertIn("http://127.0.0.1:12345/v1", profile)
+            self.assertNotIn("fixture-api-key", profile)
+            self.assertNotIn("fixture-github-token", profile)
             def builder(name, checkout, prompt, schema, writable=False):
                 self.assertIn("expected 2", prompt)
                 (checkout / "src/slugify.py").write_text("value = 2\n")
