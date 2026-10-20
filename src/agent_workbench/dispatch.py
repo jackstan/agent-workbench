@@ -216,7 +216,12 @@ def authorize_build(
                  "approval_source_event_id": snapshot.approval_source_event_id,
                  "approval_key_version": "source-approval-v1",
                  "approval_event_id": snapshot.approval_event_id,
-                 "proposal_id": snapshot.proposal_id},
+                 "proposal_id": snapshot.proposal_id,
+                 "base_sha": snapshot.base_sha, "base_branch": snapshot.base_branch,
+                 "approved_paths": list(snapshot.approved_paths),
+                 "approver_actor_id": snapshot.approver_actor_id,
+                 "approved_at": snapshot.approved_at,
+                 "proposal_binding": snapshot.proposal_binding},
     )
     if not ledger.claim(key, event.to_dict()):
         raise DispatchError("approval has already been consumed")

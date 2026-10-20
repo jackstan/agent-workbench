@@ -40,3 +40,4 @@ jobs:
           "$RUNNER_TEMP/wheel-check/bin/python" -m pip install --no-deps "$RUNNER_TEMP"/wheels/agent_workbench-*.whl
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/wheel-check/bin/agent-workbench" demo
+          "$RUNNER_TEMP/wheel-check/bin/agent-workbench" ledger-init "$RUNNER_TEMP/wheel-ledger.sqlite"

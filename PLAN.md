@@ -16,17 +16,25 @@ Keep Sendable's existing agent code, workflows, configuration, and deployments i
 
 This milestone is not a live autonomous delivery demonstration.
 
-## 2. Authenticated integrations — next
+## 2. Authenticated integrations — implemented in part; live proof pending
 
-- Implement a Linear adapter resolving proposal creation, current decision, revocation,
-  and canonical actor identity from complete authenticated records.
-- Implement a durable atomic consumption ledger; uncertain writes preserve receipts.
+- Implemented a read-only Linear API adapter for content-bound proposals, direct
+  app/human identities, complete current pagination, and observed revocation.
+- Implemented a local SQLite ledger with atomic claims, retained source records,
+  comparison at claim time, and receipts surviving a lost response after commit.
+- Tested fixture-based approval failure cases, eight-process contention, and
+  process termination before/after commit. Query validated against the official schema.
+- Created the independent duration-parser sandbox with fixed acceptance tests.
+- Next: configure dedicated Linear identities and read credentials, and observe
+  a genuine approved sandbox issue. No live approval has been claimed as proof.
 - Add GitHub read adapters and explicit workflow provenance validation.
 - Revalidate the complete approved proposal, repository, scope, and base before publication.
 - Use separate test-project identities and credentials; do not import Sendable's settings.
 
 Done when stale, forged, revoked, duplicated, and changed approvals cannot create work,
 and an intentionally approved test proposal can produce a bound build authorization.
+The current reader cannot prove deleted history it never observed, and cannot make
+a future publication safe without a fresh authority check.
 
 ## 3. Isolated builder and PR workflow
 
