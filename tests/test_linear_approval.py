@@ -113,6 +113,42 @@ class LinearApprovalTests(unittest.TestCase):
         with self.assertRaisesRegex(DispatchError, "consumed"):
             self.authorize()
 
+    def test_saved_authorization_revalidated_without_second_claim(self):
+        saved = json.loads(json.dumps(self.authorize().to_dict()))
+        ledger = SQLiteLedger(self.path)
+        original = ledger.receipt(saved["approval_key"])
+        adapter = LinearApprovalAdapter(self.source, self.source.project, self.source.settings)
+        result = adapter.revalidate(saved, issue_id=ISSUE, proposal_comment_id=PROPOSAL,
+                                    ledger=ledger, now=NOW)
+        self.assertEqual(result["approval_key"], saved["approval_key"])
+        self.assertEqual(ledger.receipt(saved["approval_key"]), original)
+        with self.assertRaisesRegex(DispatchError, "consumed"):
+            self.authorize()
+
+    def test_saved_authorization_tampering_and_revocation_block_continuation(self):
+        saved = json.loads(json.dumps(self.authorize().to_dict()))
+        ledger = SQLiteLedger(self.path)
+        adapter = LinearApprovalAdapter(self.source, self.source.project, self.source.settings)
+        for field, value in (("repository", "other/repo"), ("approved_paths", ["tests/*"]),
+                             ("branch_name", "other"), ("scope_digest", "0" * 64)):
+            with self.subTest(field=field), self.assertRaises(DispatchError):
+                adapter.revalidate({**saved, field: value}, issue_id=ISSUE,
+                                   proposal_comment_id=PROPOSAL, ledger=ledger, now=NOW)
+        self.source.rows.append(comment(REVOCATION, HUMAN, self.source.command("revoke")))
+        with self.assertRaisesRegex(LinearError, "revoked"):
+            adapter.revalidate(saved, issue_id=ISSUE, proposal_comment_id=PROPOSAL,
+                               ledger=ledger, now=NOW)
+
+    def test_saved_authorization_needs_receipt_and_fresh_decision(self):
+        saved = json.loads(json.dumps(self.authorize().to_dict()))
+        adapter = LinearApprovalAdapter(self.source, self.source.project, self.source.settings)
+        empty = SQLiteLedger.initialize(Path(self.directory.name) / "empty.sqlite")
+        with self.assertRaises(DispatchError):
+            adapter.revalidate(saved, issue_id=ISSUE, proposal_comment_id=PROPOSAL, ledger=empty, now=NOW)
+        with self.assertRaisesRegex(DispatchError, "stale"):
+            adapter.revalidate(saved, issue_id=ISSUE, proposal_comment_id=PROPOSAL,
+                               ledger=SQLiteLedger(self.path), now=NOW + timedelta(days=8))
+
     def test_revocation_on_later_page_blocks_then_deletion_cannot_revive(self):
         self.source.rows.append(comment(REVOCATION, HUMAN, self.source.command("revoke")))
         with self.assertRaisesRegex(LinearError, "revoked"):

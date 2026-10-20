@@ -24,7 +24,7 @@ from .contracts import (
     VerifiedDecision, VerifiedProposalCreation, apply_decision, create_builder_handoff,
     create_proposal_event,
 )
-from .dispatch import ApprovalSnapshot, BuildAuthorization, authorize_build
+from .dispatch import ApprovalSnapshot, BuildAuthorization, authorize_build, revalidate_saved_authorization
 from .ledger import SQLiteLedger
 
 
@@ -350,6 +350,24 @@ class LinearApprovalAdapter:
 
     def authorize(self, issue_id: str, proposal_comment_id: str, *, expected_base_sha: str,
                   ledger: SQLiteLedger, now: datetime | None = None) -> BuildAuthorization:
+        snapshot, handoff, source, controls = self._snapshot(
+            issue_id, proposal_comment_id, expected_base_sha=expected_base_sha, ledger=ledger)
+        return authorize_build(snapshot, handoff, approver_actor_id=self.project.approver_actor_id,
+                               expected_repository=self.project.repository,
+                               ledger=_ObservedLedger(ledger, source, controls),
+                               now=now or datetime.now(timezone.utc))
+
+    def revalidate(self, saved: dict, *, issue_id: str, proposal_comment_id: str,
+                   ledger: SQLiteLedger, now: datetime | None = None) -> dict:
+        """Fresh authenticated reads for an explicitly requested continuation."""
+        snapshot, handoff, _, _ = self._snapshot(
+            issue_id, proposal_comment_id, expected_base_sha=saved["base_sha"], ledger=ledger)
+        return revalidate_saved_authorization(
+            snapshot, handoff, saved, ledger, approver_actor_id=self.project.approver_actor_id,
+            expected_repository=self.project.repository, now=now)
+
+    def _snapshot(self, issue_id: str, proposal_comment_id: str, *, expected_base_sha: str,
+                  ledger: SQLiteLedger):
         _uuid(issue_id)
         _uuid(proposal_comment_id)
         _base(expected_base_sha)
@@ -434,7 +452,4 @@ class LinearApprovalAdapter:
             proposal_binding={"proposal_sha256": digest, "read_sha256": read_digest,
                               "envelope": envelope, "source": source, "controls": controls},
         )
-        return authorize_build(snapshot, handoff, approver_actor_id=self.project.approver_actor_id,
-                               expected_repository=self.project.repository,
-                               ledger=_ObservedLedger(ledger, source, controls),
-                               now=now or datetime.now(timezone.utc))
+        return snapshot, handoff, source, controls

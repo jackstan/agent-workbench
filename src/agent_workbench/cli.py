@@ -38,8 +38,56 @@ def main(argv=None) -> int:
     authorize.add_argument("--proposal-comment", required=True, help="Canonical proposal comment UUID")
     authorize.add_argument("--base-sha", required=True, help="Base commit independently resolved by the operator")
     authorize.add_argument("--ledger", required=True, type=Path)
+    journal = sub.add_parser("cycle-init", help="Create a new local repair journal; never overwrite one")
+    journal.add_argument("path", type=Path)
+    cycle = sub.add_parser("run-cycle", help="Run an explicitly authorized local Codex repair cycle (macOS)")
+    for name in ("project", "authorization", "checkout"):
+        cycle.add_argument(name, type=Path)
+    for name in ("linear-config", "ledger", "journal", "workspace", "evidence", "codex", "python"):
+        cycle.add_argument("--" + name, required=True, type=Path)
+    for name in ("issue", "proposal-comment", "head"):
+        cycle.add_argument("--" + name, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "cycle-init":
+            from .coordinator import Journal
+            Journal.initialize(args.path)
+            print(json.dumps({"initialized": str(args.path.absolute())}))
+            return 0
+        if args.command == "run-cycle":
+            from .coordinator import Journal, run_cycle
+            from .codex_local import LocalCodexAdapter
+            from .linear import LinearApprovalAdapter, LinearClient, load_linear_config, _json
+            project = load_config(args.project)
+            saved = _json(args.authorization.read_bytes())
+            api_key = os.environ.get("AGENT_WORKBENCH_LINEAR_API_KEY")
+            access_token = os.environ.get("AGENT_WORKBENCH_LINEAR_ACCESS_TOKEN")
+            if bool(api_key) == bool(access_token):
+                raise ValueError("Set exactly one workbench Linear API key or OAuth access token")
+            linear = LinearApprovalAdapter(
+                LinearClient(api_key or access_token, oauth=bool(access_token)),
+                project, load_linear_config(args.linear_config))
+            ledger = SQLiteLedger(args.ledger)
+
+            def authority():
+                return linear.revalidate(saved, issue_id=args.issue,
+                                         proposal_comment_id=args.proposal_comment, ledger=ledger)
+
+            # Authenticate before creating worker directories or launching any commands.
+            authority()
+            adapter = LocalCodexAdapter(
+                checkout=args.checkout, workspace=args.workspace, evidence=args.evidence,
+                config=project, authorization=saved, authority=authority,
+                codex=args.codex, python=args.python,
+                denied_paths=(args.ledger.parent, args.journal.parent, args.authorization.parent))
+            store = Journal(args.journal)
+            try:
+                result = run_cycle(project, saved, args.head, store, adapter)
+            finally:
+                adapter.save("events.json", store.export(saved["approval_key"]))
+            adapter.save("result.json", result)
+            print(json.dumps(result, indent=2))
+            return 0 if result["state"] == "ready_for_human" else 2
         if args.command == "check-config":
             value = load_config(args.path)
             print(json.dumps({"valid": True, "executes_commands": False, "config": asdict(value)}, indent=2))

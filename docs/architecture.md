@@ -109,10 +109,32 @@ The review gate is independent of the review provider. Required checks must all 
 have unique expected identities, and match the exact head and trusted base. A model
 cannot override a failed check. Missing evidence or malformed review output is incomplete.
 
-The repair module is a pure decision function. `dispatch=True` is eligibility only:
-the future coordinator must additionally authenticate provenance, validate finding scope,
-atomically reserve an attempt, and recheck PR state/head before applying or publishing.
+The repair module is a pure decision function. `dispatch=True` is eligibility only.
+The local coordinator authenticates fresh authority through the adapter, validates
+finding scope, durably reserves each attempt before execution, rechecks the local
+head and verifies every new commit. A unique approval key admits one run; an
+interrupted or uncertain run cannot silently start again. Reservations survive
+process exit. Terminal replays do not re-run workers or confer fresh authority.
+The publisher remains responsible for remote PR state/head/base checks.
 Human merge and production promotion remain separate from a PASS.
+
+The macOS Codex adapter clones inert worker checkouts without a remote, gives the
+builder write access to exact approved existing files, and gives the verifier read
+access. Shell network access is disabled, sensitive operator directories are denied,
+and an explicit minimal environment excludes credentials. The parent Codex process
+uses its existing authentication for inference. Isolation probes are evidence of
+selected boundaries, not a comprehensive host sandbox audit.
+
+Repairs are captured as cumulative patches against the original approved base.
+The existing patch policy applies those bytes in a fresh base checkout; a trusted
+commit then uses the rejected candidate as its parent. Authorization is never
+rewritten to bless a new base. Tests and protected paths remain outside scope.
+Each verifier has a new process and checkout, receives no builder conversation,
+and supplies structured findings bound to the exact candidate.
+
+The core journal and coordinator are provider-independent. The current CLI wires
+Linear reads and a local Codex process adapter. It does not publish, merge, deploy,
+automatically reconcile crashes, or establish distributed exactly-once execution.
 
 ## Extension contracts
 

@@ -8,9 +8,12 @@ here as an independent toolkit. Sendable continues to use its existing system.
 
 **Status: development foundation (`0.1.0.dev0`).** The installable package,
 offline demonstration, read-only Linear approval adapter, and local SQLite ledger
-are implemented. Linear is verified with adversarial fixtures and schema validation;
-a real approved-issue trial remains pending. GitHub/Codex execution, PR publication,
-and release validation are future milestones.
+are implemented. A real sandbox approval and supervised first-pass PR have been
+observed. An opt-in local coordinator now connects independent Codex verification
+to bounded builder repairs, with durable reservations and a fresh review of each
+new commit. It currently supports macOS and exact existing file scopes.
+Hosted execution, automatic publication, crash recovery, and release validation
+remain future milestones.
 
 ## Try it
 
@@ -66,6 +69,7 @@ autonomous coding, live identity verification, PR creation, or a deployed improv
 | Patch policy | Approved paths, protected basenames at every depth, captured patch bytes, traversal/binary/symlink rejection, isolated index validation and atomic promotion |
 | Review gate | Exact commit/base matching, complete required checks, failed checks cannot become a model PASS |
 | Repair policy | Duplicate-head suppression, at most two repairs, explicit human and deployment handoffs |
+| Local coordinator | Fresh authority checks, isolated Codex verification and repair, durable dispatch reservations, exact-commit re-verification; stops on uncertain outcomes |
 | Read recovery | Bounded transient read retries with nested deadline propagation |
 | Project configuration | Versioned TOML schema, configurable identity/scope/checks, validation without execution |
 
@@ -82,8 +86,69 @@ flowchart LR
     Merge --> Release[Release validation]
 ```
 
-The diagram describes the intended complete system. This first milestone provides
-the local policy foundation; hosted execution has not been enabled.
+The diagram describes the intended complete system. The local coordinator implements
+the verification/repair loop; hosted execution and release validation are not enabled.
+
+## Run a local repair cycle
+
+Use a reviewed installation and an **exclusively owned, disposable checkout** on the
+saved authorization's branch. This command starts from an existing candidate commit.
+Keep the approval ledger, authorization, and repair journal outside worker directories.
+It does not consume the approval a second time. A human must explicitly authorize
+continuation of that saved work.
+
+```sh
+agent-workbench cycle-init /trusted-state/cycles.sqlite
+agent-workbench run-cycle /trusted/project.toml /trusted-state/authorization.json /disposable/candidate \
+  --linear-config /trusted/linear.toml \
+  --ledger /trusted-state/approvals.sqlite --journal /trusted-state/cycles.sqlite \
+  --workspace /disposable/new-workers --evidence /trusted/new-evidence \
+  --codex /absolute/path/to/codex --python /absolute/path/to/python3 \
+  --issue ISSUE_UUID --proposal-comment COMMENT_UUID --head FULL_CANDIDATE_SHA
+```
+
+Use the dedicated Linear read credential described in the
+[approval guide](docs/linear-approval.md). Codex uses its existing local login for
+inference; worker shells receive an explicit environment, no provider credentials,
+and a restricted filesystem/network profile. A mandatory probe checks selected
+access denials before each model run. The adapter requires a Codex version that
+supports named filesystem permission profiles; it fails if the probe fails.
+
+The coordinator records `verification_completed → repair_reserved → repair_completed
+→ verification_completed` in `events.json`, including exact commits, findings, check
+results and handoff data. Full prompts, process logs, patches and model outputs are
+retained alongside it. `ready_for_human` is a review result, not permission to merge.
+Publication must freshly check the remote base/head and approval.
+
+The journal admits one run per approval. A completed replay is historical evidence;
+an interrupted run stays reserved and requires manual inspection. Do not delete or
+replace a journal to retry uncertain work. The CLI also refuses to overwrite worker
+or evidence directories. This is bounded local coordination, not unattended recovery.
+
+### Observed sandbox repair
+
+The [recorded local cycle](docs/evidence/sandbox-repair-cycle.json) starts from a
+deliberately seeded 180-minute cap. All six original tests pass on that candidate.
+A real Codex verifier reproduced `4h → 180` (expected `240`) and returned a blocker.
+The coordinator reserved one repair, handed that finding to a real Codex builder,
+captured its patch, and started a fresh verifier on the new commit. That verifier
+passed the required suite and additional checks. Completed-run replay launched no
+worker; stale review evidence was rejected.
+
+This proves one local verifier–builder–verifier cycle, not that a builder naturally
+introduced the seeded defect, that GitHub automatically triggers the loop, or that
+interrupted runs recover without an operator. Public commit statuses are published
+from the local evidence by the trusted operator.
+
+Reproduce the counterexample independently from the recorded model verdicts:
+
+```sh
+git clone https://github.com/jackstan/agent-workbench-sandbox.git sandbox-proof
+git -C sandbox-proof checkout --detach 89d4ab437096d0cf7fd768b97f739c77d0808490
+python docs/evidence/check_duration.py sandbox-proof  # expected exit 1
+git -C sandbox-proof checkout --detach 0829e3f6a13692fdf1301498edf82d9f8d0d69c4
+python docs/evidence/check_duration.py sandbox-proof  # expected exit 0
+```
 
 ## Reuse in another project
 
