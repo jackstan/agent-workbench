@@ -58,8 +58,8 @@ autonomous coding, live identity verification, PR creation, or a deployed improv
 | Component | Current behavior |
 | --- | --- |
 | Proposal contracts | Required evidence, criteria, tests, authenticated-adapter interface, immutable event records |
-| Approval gate | Actor and proposal binding, expiration/revocation checks, repository binding, consumption-ledger interface |
-| Patch policy | Approved paths, protected files, size limits, traversal/binary/symlink rejection, real Git index validation |
+| Approval gate | Actor/proposal/repository binding, expiration/revocation checks, canonical source-decision replay protection through a consumption ledger |
+| Patch policy | Approved paths, protected basenames at every depth, captured patch bytes, traversal/binary/symlink rejection, isolated index validation and atomic promotion |
 | Review gate | Exact commit/base matching, complete required checks, failed checks cannot become a model PASS |
 | Repair policy | Duplicate-head suppression, at most two repairs, explicit human and deployment handoffs |
 | Read recovery | Bounded transient read retries with nested deadline propagation |

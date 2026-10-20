@@ -10,6 +10,9 @@ Keep Sendable's existing agent code, workflows, configuration, and deployments i
 - Review and bounded-repair policy separated from provider transport.
 - Credential-free fixture replay using a real temporary repository and application tests.
 - Adversarial tests, package-install checks, and read-only CI.
+- Reproduced-boundary fixes: stable source-approval consumption, nested protected
+  basenames, and immutable patch input with isolated index validation. Regression
+  tests cover interrupted application, failed final checks, and lock ownership.
 
 This milestone is not a live autonomous delivery demonstration.
 

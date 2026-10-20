@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import os
 import shlex
 import subprocess
 from pathlib import Path, PurePosixPath
@@ -14,13 +15,16 @@ SENSITIVE_FILES = {
     ".env", ".env.example", "AGENTS.md", "requirements.txt", "agent-workbench.toml",
     "frontend/package.json", "frontend/package-lock.json", "uv.lock", "poetry.lock", "Pipfile", "Pipfile.lock", "yarn.lock", "pnpm-lock.yaml",
 }
+SENSITIVE_BASENAMES = {PurePosixPath(path).name.lower() for path in SENSITIVE_FILES} | {
+    "package.json", "package-lock.json", "pyproject.toml", "setup.py", "setup.cfg",
+}
+MAX_PATCH_BYTES = 2_000_000
 
 
 def _sensitive(path: str) -> bool:
     name = PurePosixPath(path).name.lower()
-    return (path in SENSITIVE_FILES or path.startswith(SENSITIVE_PREFIXES)
+    return (name in SENSITIVE_BASENAMES or path.startswith(SENSITIVE_PREFIXES)
             or any(part.startswith(".") for part in PurePosixPath(path).parts)
-            or name in {"package.json", "package-lock.json", "pyproject.toml", "setup.py", "setup.cfg"}
             or "config" in name or name.startswith("requirements") or name.endswith((".yaml", ".yml", ".toml"))
             or name.startswith(".env") or name.endswith((".pem", ".key"))
             or "credential" in name or "secret" in name)
@@ -103,7 +107,7 @@ def patch_paths(data: bytes) -> tuple[str, ...]:
 
 
 def validate_patch(data: bytes, authorization: dict) -> tuple[str, ...]:
-    if len(data) > 2_000_000:
+    if len(data) > MAX_PATCH_BYTES:
         raise ValueError("Patch exceeds size budget")
     paths = patch_paths(data)
     allowed = authorization.get("approved_paths", [])
@@ -121,26 +125,52 @@ def validate_patch(data: bytes, authorization: dict) -> tuple[str, ...]:
 
 def apply_patch(authorization: dict, repository: str, checkout: Path,
                 patch: Path) -> tuple[str, ...]:
-    validate_authorization(authorization, repository, checkout)
-    if subprocess.run(["git", "status", "--porcelain"], cwd=checkout,
-                      check=True, text=True, capture_output=True).stdout.strip():
-        raise ValueError("Target checkout must be clean")
-    if patch.stat().st_size > 2_000_000:
-        raise ValueError("Patch exceeds size budget")
-    paths = validate_patch(patch.read_bytes(), authorization)
-    subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "apply", "--cached", "--check", str(patch.resolve())],
-                   cwd=checkout, check=True)
-    subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "apply", "--cached", str(patch.resolve())],
-                   cwd=checkout, check=True)
-    actual = subprocess.run(["git", "diff", "--cached", "--no-ext-diff", "--no-textconv",
-                             "--name-only", "-z"], cwd=checkout, check=True,
-                            capture_output=True).stdout.decode().split("\0")
-    if not set(filter(None, actual)) or not set(filter(None, actual)).issubset(paths):
-        raise ValueError("Git interpreted a different or empty patch scope")
-    entries = subprocess.run(["git", "ls-files", "--stage", "-z"], cwd=checkout,
-                             check=True, capture_output=True).stdout.decode().split("\0")
-    for entry in filter(None, entries):
-        metadata, path = entry.split("\t", 1)
-        if path in actual and metadata.split()[0] not in {"100644", "100755"}:
-            raise ValueError("Git index contains a symlink/submodule change")
-    return paths
+    """Validate captured bytes in a private index, then atomically publish that index.
+
+    The caller owns an inert checkout exclusively. The standard index lock also
+    excludes cooperating Git writers. A hard interruption can leave a stale lock;
+    it must be inspected, never automatically stolen by a later invocation.
+    """
+    index_name = subprocess.run(["git", "rev-parse", "--git-path", "index"], cwd=checkout,
+                                check=True, text=True, capture_output=True).stdout.rstrip("\n")
+    index = (checkout / index_name).resolve()
+    lock_path = index.with_name(index.name + ".lock")
+    # Exclusive creation happens outside cleanup so an existing owner's lock is untouched.
+    lock = lock_path.open("xb")
+    promoted = False
+    try:
+        env = {**os.environ, "GIT_OPTIONAL_LOCKS": "0"}
+        with lock:
+            validate_authorization(authorization, repository, checkout)
+            if subprocess.run(["git", "status", "--porcelain"], cwd=checkout, env=env,
+                              check=True, text=True, capture_output=True).stdout.strip():
+                raise ValueError("Target checkout must be clean")
+            with patch.open("rb") as stream:
+                data = stream.read(MAX_PATCH_BYTES + 1)
+            paths = validate_patch(data, authorization)
+            lock.write(index.read_bytes())
+
+        # Git writes this private index via index.lock.lock; the real index is untouched.
+        env["GIT_INDEX_FILE"] = str(lock_path)
+        subprocess.run(["git", "-c", "core.hooksPath=" + os.devnull, "apply", "--cached", "--check", "-"],
+                       cwd=checkout, env=env, input=data, check=True)
+        subprocess.run(["git", "-c", "core.hooksPath=" + os.devnull, "apply", "--cached", "-"],
+                       cwd=checkout, env=env, input=data, check=True)
+        actual = subprocess.run(["git", "diff", "--cached", "--no-ext-diff", "--no-textconv",
+                                 "--name-only", "-z"], cwd=checkout, env=env, check=True,
+                                capture_output=True).stdout.decode().split("\0")
+        if not set(filter(None, actual)) or not set(filter(None, actual)).issubset(paths):
+            raise ValueError("Git interpreted a different or empty patch scope")
+        entries = subprocess.run(["git", "ls-files", "--stage", "-z"], cwd=checkout, env=env,
+                                 check=True, capture_output=True).stdout.decode().split("\0")
+        for entry in filter(None, entries):
+            metadata, path = entry.split("\t", 1)
+            if path in actual and metadata.split()[0] not in {"100644", "100755"}:
+                raise ValueError("Git index contains a symlink/submodule change")
+        os.replace(lock_path, index)
+        promoted = True
+        return paths
+    finally:
+        lock.close()
+        if not promoted:
+            lock_path.unlink(missing_ok=True)

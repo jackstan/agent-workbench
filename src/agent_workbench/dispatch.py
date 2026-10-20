@@ -28,7 +28,11 @@ class BuildMode(str, Enum):
 
 @dataclass(frozen=True)
 class ApprovalSnapshot:
-    """Authoritative state returned by the trusted approval adapter."""
+    """Authoritative state returned by the trusted approval adapter.
+
+    Task and source-decision IDs must be stable and unambiguous within the
+    configured repository's approval source; observation IDs may change on retry.
+    """
 
     task_id: str
     task_key: str
@@ -117,10 +121,11 @@ def _required(value: Any, field: str) -> None:
 
 
 def _approval_key(snapshot: ApprovalSnapshot) -> str:
-    material = "\0".join((snapshot.task_id, snapshot.proposal_id,
-                           snapshot.creation_event_id, snapshot.approval_event_id,
-                           snapshot.approval_source_event_id,
-                           snapshot.decision_verification_id))
+    # Consume the source decision, not a local projection or verification run.
+    # Versioned JSON avoids ambiguous delimiter joins in canonical source IDs.
+    material = json.dumps(("source-approval-v1", snapshot.repository,
+                           snapshot.task_id, snapshot.approval_source_event_id),
+                          separators=(",", ":"))
     return hashlib.sha256(material.encode()).hexdigest()
 
 
@@ -207,6 +212,9 @@ def authorize_build(
         approval_key=key, task_key=snapshot.task_key,
         occurred_at=occurred_at,
         details={"task_id": snapshot.task_id, "mode": mode.value,
+                 "repository": snapshot.repository,
+                 "approval_source_event_id": snapshot.approval_source_event_id,
+                 "approval_key_version": "source-approval-v1",
                  "approval_event_id": snapshot.approval_event_id,
                  "proposal_id": snapshot.proposal_id},
     )

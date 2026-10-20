@@ -40,6 +40,18 @@ caller supplies its trusted expected repository explicitly.
 The demo's `MemoryLedger` only illustrates the interface. Production must preserve
 uncertain claims and support recovery without resetting approval or repair history.
 
+The consumption key identifies the canonical source decision using repository,
+source task ID, and source decision ID (`source-approval-v1`). Local creation,
+approval-projection, and verification-observation IDs do not create new authority.
+Adapters must keep source identities stable and unambiguous; multiple providers
+must use provider-qualified identities. A genuinely new approval requires a new
+authenticated source decision. Receipts retain source identity and key version.
+
+This corrects the initial development key format. Existing experimental ledgers
+using the old format require reconciliation against canonical source records before
+resuming work; there is no automatic ledger migration. Retain prior receipts and
+resolve uncertain approvals rather than resetting history and replaying them.
+
 `ProposalEventLog` creates immutable in-memory values and detached inspection copies.
 It is not persistent storage or a tamper-evident hosted event service.
 
@@ -54,10 +66,28 @@ ability to alter trusted orchestration, output attestations, or sibling workspac
 The patch policy always protects workflow files, agent controls, dependency manifests,
 configuration, and secret-like paths. Project allowlists cannot override those guards.
 Broader maintenance changes require a separate reviewed human workflow.
+Reserved basenames, including `AGENTS.md`, `uv.lock`, `poetry.lock`, `Pipfile`, and
+`Pipfile.lock`, are protected at every directory depth, case-insensitively. Approved
+path patterns retain Python `fnmatch` semantics: `*` may match `/`. Mandatory
+per-file protections apply even when an approved pattern is broad.
 
 The current `apply_patch` function stages a validated diff in a clean inert checkout.
-Its authorization input must already be authenticated by its caller. Scope hashes bind
-fields against accidental or substituted state; they are not signatures or credentials.
+It captures at most the patch size limit plus one byte, validates that captured
+content, and supplies the same bytes to both Git application commands. Subsequent
+changes to the original patch file cannot replace the validated content.
+
+Application and final scope/mode checks operate on a private index held under the
+standard `index.lock`. Only a successful final check permits atomic replacement of
+the real index. Errors before that replacement preserve the original index; normal
+exception cleanup releases only the held lock. An existing lock is never stolen.
+The caller must exclusively own the checkout, its Git metadata, and its environment;
+the lock excludes cooperating Git writers, not hostile processes with access to
+those locations. Hard interruption can leave stale lock files, and interruption
+around final replacement requires inspecting state before retrying. This is not a
+power-loss durability or automatic recovery guarantee. Worktree files are not edited.
+
+Its authorization input must already be authenticated by its caller. Scope hashes
+bind fields against accidental or substituted state; they are not signatures or credentials.
 
 The review gate is independent of the review provider. Required checks must all exist,
 have unique expected identities, and match the exact head and trusted base. A model
