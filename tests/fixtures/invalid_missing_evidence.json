@@ -1,0 +1,32 @@
+{
+  "proposal_id": "demo-slug-normalization",
+  "scout": {
+    "scout_id": "demo-quality",
+    "scout_type": "quality",
+    "display_name": "Demo Quality Scout"
+  },
+  "role": "quality",
+  "trigger": "A deterministic fixture check fails",
+  "problem": "Punctuation and repeated whitespace produce malformed slugs",
+  "evidence": [],
+  "user_impact": "Generated slugs are inconsistent",
+  "confidence": "high",
+  "proposed_change": "Normalize punctuation and repeated spaces into a single hyphen",
+  "alternatives": [
+    "Ask callers to normalize input before calling slugify"
+  ],
+  "acceptance_criteria": [
+    "Hello, World! produces hello-world",
+    "Empty input produces an empty string",
+    "Existing slugs are unchanged"
+  ],
+  "required_tests": [
+    "Run the slug regression suite"
+  ],
+  "risks_non_goals": [
+    "No Unicode transliteration or remote publication"
+  ],
+  "dependencies": [
+    "Python standard library"
+  ]
+}

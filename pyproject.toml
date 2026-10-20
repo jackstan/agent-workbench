@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-workbench"
+version = "0.1.0.dev0"
+description = "Reusable controls for supervised agent development workflows."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Jack Stanger" }]
+dependencies = []
+
+[project.scripts]
+agent-workbench = "agent_workbench.cli:main"
+
+[project.urls]
+Repository = "https://github.com/jackstan/agent-workbench"
+Issues = "https://github.com/jackstan/agent-workbench/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agent_workbench = ["data/*.json", "data/*.toml"]

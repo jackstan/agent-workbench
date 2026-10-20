@@ -1,0 +1,12 @@
+schema_version = 1
+project_id = "slug-demo"
+repository = "example/slug-demo"
+base_branch = "main"
+approver_actor_id = "demo-human"
+approved_paths = ["src/*.py", "tests/*.py"]
+max_repair_attempts = 2
+
+[[checks]]
+id = "unit"
+command = ["python", "-m", "unittest", "discover", "-s", "tests", "-q"]
+timeout_seconds = 30
