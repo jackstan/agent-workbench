@@ -125,6 +125,31 @@ an interrupted run stays reserved and requires manual inspection. Do not delete 
 replace a journal to retry uncertain work. The CLI also refuses to overwrite worker
 or evidence directories. This is bounded local coordination, not unattended recovery.
 
+### Observed sandbox repair
+
+The [recorded local cycle](docs/evidence/sandbox-repair-cycle.json) starts from a
+deliberately seeded 180-minute cap. All six original tests pass on that candidate.
+A real Codex verifier reproduced `4h → 180` (expected `240`) and returned a blocker.
+The coordinator reserved one repair, handed that finding to a real Codex builder,
+captured its patch, and started a fresh verifier on the new commit. That verifier
+passed the required suite and additional checks. Completed-run replay launched no
+worker; stale review evidence was rejected.
+
+This proves one local verifier–builder–verifier cycle, not that a builder naturally
+introduced the seeded defect, that GitHub automatically triggers the loop, or that
+interrupted runs recover without an operator. Public commit statuses are published
+from the local evidence by the trusted operator.
+
+Reproduce the counterexample independently from the recorded model verdicts:
+
+```sh
+git clone https://github.com/jackstan/agent-workbench-sandbox.git sandbox-proof
+git -C sandbox-proof checkout --detach 89d4ab437096d0cf7fd768b97f739c77d0808490
+python docs/evidence/check_duration.py sandbox-proof  # expected exit 1
+git -C sandbox-proof checkout --detach 0829e3f6a13692fdf1301498edf82d9f8d0d69c4
+python docs/evidence/check_duration.py sandbox-proof  # expected exit 0
+```
+
 ## Reuse in another project
 
 Start with [`examples/demo/project.toml`](examples/demo/project.toml). Configure the

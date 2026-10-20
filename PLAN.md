@@ -51,6 +51,10 @@ a future publication safe without a fresh authority check.
 - Added a macOS Codex adapter with isolated worker shells and evidence capture.
 - Regression coverage includes stale evidence, changed heads, revoked authority,
   concurrent admission, uncertain builder outcomes, scope and repair limits.
+- Observed a real local verifier → builder repair → fresh verifier cycle on a
+  deliberately seeded sandbox defect that passed the original acceptance suite.
+  The journal records one repair, both verdicts and exact commits. See the
+  [public evidence](docs/evidence/sandbox-repair-cycle.json) and README reproducer.
 - Hosted orchestration, automatic publication and unattended recovery remain open.
 
 Done when a real approved improvement creates a PR, passes independent verification,

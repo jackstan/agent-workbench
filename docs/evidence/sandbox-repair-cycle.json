@@ -1,0 +1,240 @@
+{
+  "fixture": {
+    "kind": "deliberately seeded test fixture, not naturally occurring builder error",
+    "parent_sha": "1144e820f053c064d1f00a603e40020d28dd704e",
+    "seed_head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+    "defect": "An artificial 180-minute cap violates accumulation for longer inputs; original six tests remain unchanged.",
+    "tests_sha256": "d6adca04b621b00eeecdaa8f7ce6ae86131c28f7c6df78625b95f94cac28e6c8",
+    "workbench_commit": "1185a6b20c4691fb06591f1c1ed05062e28cccbc",
+    "wheel_sha256": "7d6981331cc2fea3f8388f22b168b3d74835b5862451fecc3b6d0061f5cb05f6"
+  },
+  "initial_verdict": {
+    "verdict": "blockers",
+    "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+    "summary": "All six acceptance tests pass, but bounded checks reveal an unauthorized 180-minute cap that violates the approved contract.",
+    "findings": [
+      {
+        "severity": "blocker",
+        "evidence": "src/duration.py returns min(total, 180). Reproduced with the supplied Python: duration_minutes('181m') returns 180 instead of 181; duration_minutes('4h') and duration_minutes('2h 2h') return 180 instead of 240. The CLI likewise prints 180 for '4h' with exit code 0. This breaks single-unit preservation and accumulation above 180 minutes.",
+        "files": [
+          "src/duration.py"
+        ],
+        "remediation_kind": "code_change"
+      }
+    ]
+  },
+  "final_verdict": {
+    "verdict": "pass",
+    "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+    "summary": "Read actual files and AGENTS.md. All six required acceptance tests passed, plus 340 generated aggregation cases, 17 invalid-input cases, four valid edge cases, and 20 CLI checks. The supplied complete diff changes only src/duration.py, accumulating tokens while preserving validation. No contract gaps or regressions found. No files modified.",
+    "findings": []
+  },
+  "coordinator_result": {
+    "state": "ready_for_human",
+    "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+    "repairs": 1,
+    "reason": "Checks and review passed; human merge remains required",
+    "replayed": false
+  },
+  "reproduction": {
+    "seed": {
+      "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+      "exit_code": 1,
+      "stdout": "'180m': expected=180, actual='180', pass=True\n'181m': expected=181, actual='180', pass=False\n'4h': expected=240, actual='180', pass=False\n'2h 2h': expected=240, actual='180', pass=False\n"
+    },
+    "repaired": {
+      "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+      "exit_code": 0,
+      "stdout": "'180m': expected=180, actual='180', pass=True\n'181m': expected=181, actual='181', pass=True\n'4h': expected=240, actual='240', pass=True\n'2h 2h': expected=240, actual='240', pass=True\n"
+    }
+  },
+  "completed_replay": {
+    "state": "ready_for_human",
+    "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+    "repairs": 1,
+    "reason": "Checks and review passed; human merge remains required",
+    "replayed": true
+  },
+  "events_unchanged_by_replay": true,
+  "repair_reservations": 1,
+  "approval_claims": 1,
+  "stale_review_decision": {
+    "state": "waiting_for_verifier",
+    "dispatch": false
+  },
+  "tests_unchanged": true,
+  "installed_modules_match_pinned_commit": true,
+  "limitations": [
+    "The initial defect was deliberately seeded by the operator, not a naturally occurring model error.",
+    "One real local Codex verifier-builder-verifier cycle; not evidence of unattended recovery or hosted triggering.",
+    "Publication is a separate trusted operator step; no merge or deployment."
+  ],
+  "events": [
+    {
+      "seq": 1,
+      "kind": "started",
+      "created_at": "2026-10-20T06:52:05.247667+00:00",
+      "payload": {
+        "base_sha": "b1e89f94cbb0cb1efc3f842e1b1bd3d25eafdce2",
+        "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490"
+      }
+    },
+    {
+      "seq": 2,
+      "kind": "verification_started",
+      "created_at": "2026-10-20T06:52:05.728162+00:00",
+      "payload": {
+        "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490"
+      }
+    },
+    {
+      "seq": 3,
+      "kind": "verification_completed",
+      "created_at": "2026-10-20T06:52:30.198381+00:00",
+      "payload": {
+        "evidence": {
+          "checks": [
+            {
+              "exit_code": 0,
+              "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+              "id": "acceptance",
+              "trusted_base_sha": "b1e89f94cbb0cb1efc3f842e1b1bd3d25eafdce2"
+            }
+          ],
+          "context_complete": true,
+          "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+          "required_checks": [
+            "acceptance"
+          ],
+          "trusted_base_sha": "b1e89f94cbb0cb1efc3f842e1b1bd3d25eafdce2"
+        },
+        "review": {
+          "findings": [
+            {
+              "evidence": "src/duration.py returns min(total, 180). Reproduced with the supplied Python: duration_minutes('181m') returns 180 instead of 181; duration_minutes('4h') and duration_minutes('2h 2h') return 180 instead of 240. The CLI likewise prints 180 for '4h' with exit code 0. This breaks single-unit preservation and accumulation above 180 minutes.",
+              "files": [
+                "src/duration.py"
+              ],
+              "remediation_kind": "code_change",
+              "severity": "blocker"
+            }
+          ],
+          "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+          "summary": "All six acceptance tests pass, but bounded checks reveal an unauthorized 180-minute cap that violates the approved contract.",
+          "verdict": "blockers"
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "kind": "decision",
+      "created_at": "2026-10-20T06:52:30.199313+00:00",
+      "payload": {
+        "dispatch": true,
+        "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+        "reason": "Blockers are eligible for a bounded repair",
+        "state": "repair_requested"
+      }
+    },
+    {
+      "seq": 5,
+      "kind": "repair_reserved",
+      "created_at": "2026-10-20T06:52:30.739547+00:00",
+      "payload": {
+        "attempt": 1,
+        "feedback": {
+          "findings": [
+            {
+              "evidence": "src/duration.py returns min(total, 180). Reproduced with the supplied Python: duration_minutes('181m') returns 180 instead of 181; duration_minutes('4h') and duration_minutes('2h 2h') return 180 instead of 240. The CLI likewise prints 180 for '4h' with exit code 0. This breaks single-unit preservation and accumulation above 180 minutes.",
+              "files": [
+                "src/duration.py"
+              ],
+              "remediation_kind": "code_change",
+              "severity": "blocker"
+            }
+          ],
+          "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490",
+          "summary": "All six acceptance tests pass, but bounded checks reveal an unauthorized 180-minute cap that violates the approved contract.",
+          "verdict": "blockers"
+        },
+        "head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490"
+      }
+    },
+    {
+      "seq": 6,
+      "kind": "repair_completed",
+      "created_at": "2026-10-20T06:52:48.603338+00:00",
+      "payload": {
+        "attempt": 1,
+        "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+        "old_head_sha": "89d4ab437096d0cf7fd768b97f739c77d0808490"
+      }
+    },
+    {
+      "seq": 7,
+      "kind": "verification_started",
+      "created_at": "2026-10-20T06:52:49.114752+00:00",
+      "payload": {
+        "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4"
+      }
+    },
+    {
+      "seq": 8,
+      "kind": "verification_completed",
+      "created_at": "2026-10-20T06:53:25.865401+00:00",
+      "payload": {
+        "evidence": {
+          "checks": [
+            {
+              "exit_code": 0,
+              "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+              "id": "acceptance",
+              "trusted_base_sha": "b1e89f94cbb0cb1efc3f842e1b1bd3d25eafdce2"
+            }
+          ],
+          "context_complete": true,
+          "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+          "required_checks": [
+            "acceptance"
+          ],
+          "trusted_base_sha": "b1e89f94cbb0cb1efc3f842e1b1bd3d25eafdce2"
+        },
+        "review": {
+          "findings": [],
+          "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+          "summary": "Read actual files and AGENTS.md. All six required acceptance tests passed, plus 340 generated aggregation cases, 17 invalid-input cases, four valid edge cases, and 20 CLI checks. The supplied complete diff changes only src/duration.py, accumulating tokens while preserving validation. No contract gaps or regressions found. No files modified.",
+          "verdict": "pass"
+        }
+      }
+    },
+    {
+      "seq": 9,
+      "kind": "decision",
+      "created_at": "2026-10-20T06:53:25.866297+00:00",
+      "payload": {
+        "dispatch": false,
+        "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+        "reason": "Checks and review passed; human merge remains required",
+        "state": "ready_for_human"
+      }
+    },
+    {
+      "seq": 10,
+      "kind": "final_authority",
+      "created_at": "2026-10-20T06:53:26.554671+00:00",
+      "payload": {}
+    },
+    {
+      "seq": 11,
+      "kind": "finished",
+      "created_at": "2026-10-20T06:53:26.608676+00:00",
+      "payload": {
+        "head_sha": "0829e3f6a13692fdf1301498edf82d9f8d0d69c4",
+        "reason": "Checks and review passed; human merge remains required",
+        "repairs": 1,
+        "replayed": false,
+        "state": "ready_for_human"
+      }
+    }
+  ]
+}
