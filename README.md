@@ -6,9 +6,11 @@ Agent Workbench separates proposals, human approval, code generation, verificati
 and publication. It began as part of Sendable's development system and is evolving
 here as an independent toolkit. Sendable continues to use its existing system.
 
-**Status: development foundation (`0.1.0.dev0`).** The installable package and
-offline demonstration work today. Live GitHub/Linear/Codex adapters, autonomous
-execution, PR publication, and release validation are future milestones.
+**Status: development foundation (`0.1.0.dev0`).** The installable package,
+offline demonstration, read-only Linear approval adapter, and local SQLite ledger
+are implemented. Linear is verified with adversarial fixtures and schema validation;
+a real approved-issue trial remains pending. GitHub/Codex execution, PR publication,
+and release validation are future milestones.
 
 ## Try it
 
@@ -59,6 +61,8 @@ autonomous coding, live identity verification, PR creation, or a deployed improv
 | --- | --- |
 | Proposal contracts | Required evidence, criteria, tests, authenticated-adapter interface, immutable event records |
 | Approval gate | Actor/proposal/repository binding, expiration/revocation checks, canonical source-decision replay protection through a consumption ledger |
+| Linear adapter | Complete paginated reads, direct actor identity, full proposal/config/base binding, observed revocation and mutation checks |
+| Local ledger | Atomic SQLite claims, persistent receipts and source observations, process-race and interrupted-commit tests |
 | Patch policy | Approved paths, protected basenames at every depth, captured patch bytes, traversal/binary/symlink rejection, isolated index validation and atomic promotion |
 | Review gate | Exact commit/base matching, complete required checks, failed checks cannot become a model PASS |
 | Repair policy | Duplicate-head suppression, at most two repairs, explicit human and deployment handoffs |
@@ -89,8 +93,15 @@ repository, approver, approved paths, required checks, and repair limit. The
 
 Configuration must come from a reviewed, trusted project revision. A proposal or
 PR cannot grant itself permission to change protected paths. A configuration file
-does not authenticate its declared approver; a future adapter must resolve that
-identity through the provider's authenticated API.
+does not authenticate its declared approver; an approval adapter must resolve that
+identity through the provider's authenticated API. The implemented Linear adapter
+requires a direct human decision and a distinct app creator.
+
+The [separate sandbox](https://github.com/jackstan/agent-workbench-sandbox) contains
+a deliberately broken duration parser and predefined acceptance tests. It consumes
+a pinned workbench revision without copying the engine. Follow the
+[Linear approval and ledger guide](docs/linear-approval.md) to configure the first
+live authorization trial. No builder or publisher is enabled by that setup.
 
 The initial integration stack is GitHub, Linear, and Codex. Project-specific Scout
 collectors will supply findings through the proposal contract. Supporting that

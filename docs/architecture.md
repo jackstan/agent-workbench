@@ -8,8 +8,9 @@
 3. **Project settings and extensions:** commands, scope, documentation context, release
    targets, and domain-specific Scout collectors.
 
-The current package implements the first layer and configuration validation. The demo
-contains explicitly named fixture adapters. Production adapters remain on the roadmap.
+The current package implements the first layer, configuration validation, a read-only
+Linear adapter and a local SQLite ledger. The demo still uses explicitly named
+fixture adapters. Live approval proof and execution/publication adapters remain pending.
 
 ## Modules
 
@@ -22,6 +23,8 @@ contains explicitly named fixture adapters. Production adapters remain on the ro
 | `repair` | Decide whether to request a repair, wait, or hand work to a human |
 | `read_recovery` | Retry transient idempotent reads under a shared attempt/time bound |
 | `config` | Parse reviewed project settings and validate argument arrays and scope rules |
+| `linear` | Authenticate current proposal/decision reads, bind the full content and reviewed configs |
+| `ledger` | Atomically consume approvals and retain observed controls and recovery receipts on one host |
 | `demo` | Replay fixed fixtures with temporary Git operations and real application tests |
 
 ## Authority and evidence
@@ -40,6 +43,13 @@ caller supplies its trusted expected repository explicitly.
 The demo's `MemoryLedger` only illustrates the interface. Production must preserve
 uncertain claims and support recovery without resetting approval or repair history.
 
+The implemented `SQLiteLedger` opens an explicitly initialized persistent database.
+It serializes claims across local processes, retains complete receipts, and rejects
+missing/corrupt/unsupported stores. No automatic reset or resumption is provided.
+The Linear adapter uses a comparison and claim in one transaction so another
+runner's newly observed control record prevents consumption of a stale snapshot.
+See [the operational guide](linear-approval.md) for setup, recovery and limits.
+
 The consumption key identifies the canonical source decision using repository,
 source task ID, and source decision ID (`source-approval-v1`). Local creation,
 approval-projection, and verification-observation IDs do not create new authority.
@@ -47,10 +57,16 @@ Adapters must keep source identities stable and unambiguous; multiple providers
 must use provider-qualified identities. A genuinely new approval requires a new
 authenticated source decision. Receipts retain source identity and key version.
 
-This corrects the initial development key format. Existing experimental ledgers
-using the old format require reconciliation against canonical source records before
-resuming work; there is no automatic ledger migration. Retain prior receipts and
-resolve uncertain approvals rather than resetting history and replaying them.
+This is the first supported durable ledger format. No existing live ledgers need
+migration; preserve all new receipts rather than resetting history on failure.
+
+Linear proposals are unedited top-level comments by the configured app user.
+The human decision names that comment and the digest of the entire envelope,
+including the proposal, repository/base/scope and both reviewed configurations.
+Provider-qualified issue and comment UUIDs define source identity. Two complete
+current reads and durable source observations detect seen edits/deletions and
+revocation. Linear does not supply an immutable transaction across these reads;
+unseen deleted history and later revocation remain outside the guarantee.
 
 `ProposalEventLog` creates immutable in-memory values and detached inspection copies.
 It is not persistent storage or a tamper-evident hosted event service.
