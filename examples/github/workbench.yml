@@ -122,7 +122,7 @@ jobs:
           GH_TOKEN: ${{ github.token }} # Read-only; excluded from worker environment.
         run: |
           modules_dir="$(npm root -g)"
-          codex_native="$(python -c 'import pathlib,sys; p=list(pathlib.Path(sys.argv[1]).glob("**/vendor/*/codex/codex")); assert len(p)==1, p; print(p[0])' "$modules_dir")"
+          codex_native="$(python -c 'import pathlib,sys; p=list(pathlib.Path(sys.argv[1]).glob("**/vendor/*/bin/codex")); assert len(p)==1, p; print(p[0])' "$modules_dir")"
           python -m agent_workbench.github_cycle run \
             --packet "$RUNNER_TEMP/approval/authorization.json" \
             --checkout "$GITHUB_WORKSPACE/candidate" \
